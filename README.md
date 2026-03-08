@@ -11,6 +11,12 @@ A modern desktop application that automatically organizes files in any folder in
 
 ---
 
+## 🖼️ Screenshot
+
+![Smart File Organizer UI](assets/image.png)
+
+---
+
 ## ✨ Features
 
 - 📁 **One-click folder organization** — select any folder and organize instantly
