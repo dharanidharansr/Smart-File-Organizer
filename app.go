@@ -13,11 +13,19 @@ type App struct {
 	ctx     context.Context
 	history []FileRecord
 	stats   StatsResponse
+	db      *DB
 }
 
 // NewApp creates a new App instance.
 func NewApp() *App {
-	return &App{}
+	db := NewDB()
+	app := &App{db: db}
+	// Load persisted history and stats from MongoDB on startup
+	if db != nil {
+		app.history = db.LoadAllRecords()
+		app.stats = db.LoadStats()
+	}
+	return app
 }
 
 // startup is called when the app starts. The context is saved so we
@@ -49,11 +57,18 @@ func (a *App) OrganizeFiles(folderPath string) OrganizeResult {
 		return OrganizeResult{Success: false, Error: err.Error()}
 	}
 
+	// Persist to MongoDB
+	a.db.InsertRecords(records)
+
 	// Prepend new records so the most recent appear first in history
 	a.history = append(records, a.history...)
 
-	// Rebuild stats from full history
-	a.rebuildStats()
+	// Rebuild stats from full history (or reload from DB if available)
+	if a.db != nil {
+		a.stats = a.db.LoadStats()
+	} else {
+		a.rebuildStats()
+	}
 
 	return OrganizeResult{
 		Success: true,

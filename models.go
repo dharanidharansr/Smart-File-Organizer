@@ -2,11 +2,11 @@ package main
 
 // FileRecord represents a single moved file.
 type FileRecord struct {
-	Filename  string `json:"filename"`
-	Type      string `json:"type"`
-	OldPath   string `json:"old_path"`
-	NewPath   string `json:"new_path"`
-	Timestamp string `json:"timestamp"`
+	Filename  string `json:"filename"  bson:"filename"`
+	Type      string `json:"type"      bson:"type"`
+	OldPath   string `json:"old_path"  bson:"old_path"`
+	NewPath   string `json:"new_path"  bson:"new_path"`
+	Timestamp string `json:"timestamp" bson:"timestamp"`
 }
 
 // OrganizeResult is returned by App.OrganizeFiles.
