@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #000000; }
+  ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #555555; }
+}
+
+@layer components {
+  /* ── Card ────────────────────────────────────────────────────── */
+  .glass-card {
+    @apply relative rounded-2xl overflow-hidden;
+    background: #111111;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .glass-card::before {
+    content: '';
+    @apply absolute inset-0 rounded-2xl pointer-events-none;
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%);
+  }
+
+  /* ── Wordmark ────────────────────────────────────────────────── */
+  .gradient-text {
+    color: #ffffff;
+  }
+
+  /* ── Primary button (white on black) ────────────────────────── */
+  .btn-primary {
+    @apply relative inline-flex items-center gap-2 px-6 py-3
+           font-semibold rounded-xl
+           transition-all duration-200 cursor-pointer
+           select-none overflow-hidden;
+    background: #ffffff;
+    color: #000000;
+    box-shadow: 0 4px 20px rgba(255,255,255,0.12);
+  }
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200;
+    background: #e0e0e0;
+  }
+  .btn-primary:hover::before  { @apply opacity-100; }
+  .btn-primary:hover          { box-shadow: 0 8px 32px rgba(255,255,255,0.2); transform: translateY(-1px); }
+  .btn-primary:active         { transform: translateY(0) scale(0.98); }
+  .btn-primary:disabled       { @apply opacity-40 cursor-not-allowed; transform: none; box-shadow: none; }
+  .btn-primary span           { @apply relative z-10; }
+
+  /* ── Input ───────────────────────────────────────────────────── */
+  .input-glow {
+    @apply w-full px-4 py-3 rounded-xl
+           font-mono text-sm outline-none
+           transition-all duration-200;
+    background: #0a0a0a;
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #f0f0f0;
+  }
+  .input-glow::placeholder { color: #555555; }
+  .input-glow:focus {
+    border-color: rgba(255,255,255,0.45);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.07);
+  }
+
+  /* ── Section heading ─────────────────────────────────────────── */
+  .section-title {
+    @apply flex items-center gap-3 font-semibold text-base mb-6;
+    color: #ffffff;
+  }
+  .section-title .icon-wrap {
+    @apply flex items-center justify-center w-8 h-8 rounded-lg;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  /* ── Skeleton shimmer ────────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, #181818 25%, #2a2a2a 50%, #181818 75%);
+    background-size: 400px 100%;
+    @apply animate-shimmer rounded-xl;
+  }
+
+  /* ── Type badge ──────────────────────────────────────────────── */
+  .type-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5
+           rounded-full text-xs font-semibold whitespace-nowrap;
+  }
+}

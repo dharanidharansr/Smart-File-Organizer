@@ -1,0 +1,70 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50:  '#f9f9f9',
+          100: '#f0f0f0',
+          200: '#e0e0e0',
+          300: '#c0c0c0',
+          400: '#909090',
+          500: '#ffffff',
+          600: '#e0e0e0',
+          700: '#bdbdbd',
+          800: '#9e9e9e',
+          900: '#616161',
+        },
+        dark: {
+          900: '#000000',
+          800: '#080808',
+          700: '#0f0f0f',
+          600: '#141414',
+          500: '#1a1a1a',
+          400: '#222222',
+          300: '#2e2e2e',
+          200: '#3d3d3d',
+          100: '#555555',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'grid-pattern': "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+      },
+      boxShadow: {
+        'glow-sm':  '0 0 12px rgba(255,255,255,0.08)',
+        'glow':     '0 0 24px rgba(255,255,255,0.12)',
+        'glow-lg':  '0 0 48px rgba(255,255,255,0.18)',
+        'glow-green': '0 0 24px rgba(255,255,255,0.15)',
+        'glass':    '0 8px 32px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)',
+        'card':     '0 4px 24px rgba(0,0,0,0.9)',
+        'card-hover':'0 12px 48px rgba(0,0,0,0.95)',
+      },
+      animation: {
+        'fade-in':     'fadeIn 0.4s ease-out',
+        'slide-up':    'slideUp 0.4s ease-out',
+        'pulse-glow':  'pulseGlow 2s ease-in-out infinite',
+        'shimmer':     'shimmer 1.5s infinite',
+        'count-up':    'countUp 0.6s ease-out',
+        'spin-slow':   'spin 1.5s linear infinite',
+        'toast-in':    'toastIn 0.35s cubic-bezier(0.16,1,0.3,1)',
+        'toast-out':   'toastOut 0.25s ease-in forwards',
+      },
+      keyframes: {
+        fadeIn:    { from: { opacity: '0' }, to: { opacity: '1' } },
+        slideUp:   { from: { opacity: '0', transform: 'translateY(16px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+        pulseGlow: { '0%,100%': { boxShadow: '0 0 12px rgba(255,255,255,0.1)' }, '50%': { boxShadow: '0 0 28px rgba(255,255,255,0.25)' } },
+        shimmer:   { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
+        toastIn:   { from: { opacity: '0', transform: 'translateY(12px) scale(0.96)' }, to: { opacity: '1', transform: 'translateY(0) scale(1)' } },
+        toastOut:  { from: { opacity: '1', transform: 'translateY(0)' }, to: { opacity: '0', transform: 'translateY(8px)' } },
+      },
+      backdropBlur: { xs: '2px' },
+    },
+  },
+  plugins: [],
+}

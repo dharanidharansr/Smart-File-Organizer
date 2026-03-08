@@ -1,0 +1,199 @@
+---
+// FolderSelector.astro – Organize Folder card using Wails native bindings
+---
+
+<div class="glass-card p-7 animate-slide-up">
+  <!-- Header -->
+  <div class="section-title">
+    <div class="icon-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" style="color:#888888" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="font-semibold text-base leading-none" style="color:#ffffff;">Organize Folder</h2>
+      <p class="text-xs mt-1" style="color:#555555;">Pick a local folder and sort files by type automatically</p>
+    </div>
+  </div>
+
+  <!-- Path row -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-3">
+    <!-- Browse button (native OS dialog via Wails) -->
+    <button id="browse-btn" class="btn-secondary whitespace-nowrap flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L10.707 6.7A1 1 0 0011.414 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+      </svg>
+      Browse…
+    </button>
+
+    <!-- Manual path input -->
+    <div class="relative flex-1">
+      <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L10.707 6.7A1 1 0 0011.414 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        </svg>
+      </div>
+      <input
+        id="folder-path"
+        class="input-glow pl-10"
+        type="text"
+        placeholder="Select a folder or type a path…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+
+    <!-- Organize button -->
+    <button id="organize-btn" class="btn-primary whitespace-nowrap">
+      <span id="btn-content" class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        <span>Organize Files</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Inline status bar -->
+  <div id="organize-status" class="hidden"></div>
+
+  <!-- Progress bar -->
+  <div id="progress-wrap" class="hidden mt-3">
+    <div class="h-1 w-full rounded-full overflow-hidden" style="background: rgba(255,255,255,0.06);">
+      <div id="progress-bar" class="h-full rounded-full transition-all duration-500" style="width:0%; background: #ffffff;"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .btn-secondary {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #888888;
+    transition: all 0.2s ease;
+  }
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(255,255,255,0.35);
+    color: #ffffff;
+  }
+  .btn-secondary:active { transform: scale(0.98); }
+</style>
+
+<script>
+  // Wails injects window.go.main.App at runtime.
+  // During Astro dev (browser), we fall back to a mock.
+  declare const window: Window & {
+    go?: { main?: { App?: {
+      SelectFolder: () => Promise<string>;
+      OrganizeFiles: (path: string) => Promise<{ success: boolean; error?: string; moved: number; files: unknown[] }>;
+    } } };
+    showToast?: (msg: string, type: string) => void;
+    refreshStats?: () => void;
+    refreshHistory?: () => void;
+  };
+
+  const input        = document.getElementById("folder-path")    as HTMLInputElement;
+  const browseBtn    = document.getElementById("browse-btn")      as HTMLButtonElement;
+  const organizeBtn  = document.getElementById("organize-btn")    as HTMLButtonElement;
+  const statusDiv    = document.getElementById("organize-status") as HTMLDivElement;
+  const progressWrap = document.getElementById("progress-wrap")   as HTMLDivElement;
+  const progressBar  = document.getElementById("progress-bar")    as HTMLDivElement;
+  const btnContent   = document.getElementById("btn-content")     as HTMLSpanElement;
+
+  const SPINNER = `<svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>`;
+  const ZAP     = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+  const CHECK   = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+  const WARN    = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`;
+  const ERR     = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 9l-6 6M9 9l6 6"/></svg>`;
+
+  function setStatus(html: string, type: "success"|"error"|"loading"|"hidden") {
+    if (type === "hidden") { statusDiv.className = "hidden"; return; }
+    const base = "mt-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5";
+    const map: Record<string, string> = {
+      success: `${base}`,
+      error:   `${base}`,
+      loading: `${base}`,
+    };
+    const bg: Record<string, string> = {
+      success: "background:#0f0f0f;border:1px solid rgba(255,255,255,0.25);color:#ffffff;",
+      error:   "background:#0f0f0f;border:1px solid rgba(255,255,255,0.15);color:#ff6b6b;",
+      loading: "background:#0f0f0f;border:1px solid rgba(255,255,255,0.10);color:#aaaaaa;",
+    };
+    statusDiv.className = map[type];
+    statusDiv.setAttribute("style", bg[type]);
+    statusDiv.innerHTML = html;
+  }
+
+  function setProgress(pct: number) {
+    if (pct <= 0) { progressWrap.classList.add("hidden"); progressBar.style.width = "0%"; return; }
+    progressWrap.classList.remove("hidden");
+    progressBar.style.width = `${pct}%`;
+  }
+
+  // ── Browse button: open native OS folder dialog via Wails ─────────
+  browseBtn.addEventListener("click", async () => {
+    const App = window.go?.main?.App;
+    if (!App) {
+      setStatus(`${WARN}<span>Native folder picker only works inside the desktop app.</span>`, "error");
+      return;
+    }
+    try {
+      const selected = await App.SelectFolder();
+      if (selected) input.value = selected;
+    } catch (e) {
+      console.error("SelectFolder error:", e);
+    }
+  });
+
+  // ── Organize button ───────────────────────────────────────────────
+  organizeBtn.addEventListener("click", async () => {
+    const path = input.value.trim();
+    if (!path) {
+      setStatus(`${WARN}<span>Please select or enter a folder path first.</span>`, "error");
+      return;
+    }
+
+    const App = window.go?.main?.App;
+    if (!App) {
+      setStatus(`${ERR}<span>Wails runtime not available. Run <code>wails dev</code> to use the desktop app.</span>`, "error");
+      return;
+    }
+
+    // Loading state
+    organizeBtn.disabled = true;
+    btnContent.innerHTML = `${SPINNER}<span>Organizing…</span>`;
+    setStatus(`${SPINNER}<span>Scanning and moving files…</span>`, "loading");
+    setProgress(30);
+
+    try {
+      setProgress(60);
+      const result = await App.OrganizeFiles(path);
+      setProgress(100);
+
+      if (!result.success) {
+        setStatus(`${ERR}<span>${result.error ?? "Unknown error"}</span>`, "error");
+        window.showToast?.(`Error: ${result.error}`, "error");
+      } else if (result.moved === 0) {
+        setStatus(`${CHECK}<span>No files to organize in that folder.</span>`, "success");
+        window.showToast?.("No files found to organize.", "info");
+      } else {
+        setStatus(`${CHECK}<span>Successfully organized <strong>${result.moved}</strong> file${result.moved !== 1 ? "s" : ""}!</span>`, "success");
+        window.showToast?.(`✨ ${result.moved} file${result.moved !== 1 ? "s" : ""} organized!`, "success");
+        // Refresh sibling components
+        window.refreshStats?.();
+        window.refreshHistory?.();
+      }
+
+      setTimeout(() => setProgress(0), 800);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setStatus(`${ERR}<span>${msg}</span>`, "error");
+      window.showToast?.(`Error: ${msg}`, "error");
+      setProgress(0);
+    } finally {
+      organizeBtn.disabled = false;
+      btnContent.innerHTML = `${ZAP}<span>Organize Files</span>`;
+    }
+  });
+</script>

@@ -1,0 +1,138 @@
+---
+// FolderInput.astro – Organize Folder card (premium redesign)
+---
+
+<div class="glass-card p-7 animate-slide-up">
+  <!-- Header -->
+  <div class="section-title">
+    <div class="icon-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="text-slate-100 font-semibold text-base leading-none">Organize Folder</h2>
+      <p class="text-xs text-slate-500 mt-1">Scan a local directory and sort files by type</p>
+    </div>
+  </div>
+
+  <!-- Input row -->
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="relative flex-1">
+      <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.586a1 1 0 01.707.293L10.707 6.7A1 1 0 0011.414 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        </svg>
+      </div>
+      <input
+        id="folder-path"
+        class="input-glow pl-10"
+        type="text"
+        placeholder="C:\Users\you\Downloads  or  /home/you/downloads"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <button id="organize-btn" class="btn-primary whitespace-nowrap">
+      <span id="btn-content" class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        <span>Organize Files</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Inline status bar -->
+  <div id="organize-status" class="hidden"></div>
+
+  <!-- Progress bar -->
+  <div id="progress-wrap" class="hidden mt-3">
+    <div class="h-1 w-full rounded-full overflow-hidden" style="background: rgba(255,255,255,0.06);">
+      <div id="progress-bar" class="h-full rounded-full transition-all duration-500" style="width:0%; background: linear-gradient(90deg, #6c4fff, #3b82f6);"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BACKEND = "http://localhost:8081";
+  const input        = document.getElementById("folder-path")    as HTMLInputElement;
+  const btn          = document.getElementById("organize-btn")    as HTMLButtonElement;
+  const statusDiv    = document.getElementById("organize-status") as HTMLDivElement;
+  const progressWrap = document.getElementById("progress-wrap")   as HTMLDivElement;
+  const progressBar  = document.getElementById("progress-bar")    as HTMLDivElement;
+  const btnContent   = document.getElementById("btn-content")     as HTMLSpanElement;
+
+  const SPINNER = `<svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>`;
+  const ZAP     = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+
+  function setStatus(html: string, type: "success"|"error"|"loading"|"hidden") {
+    if (type === "hidden") { statusDiv.className = "hidden"; return; }
+    const base = "mt-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2.5";
+    const map: Record<string,string> = {
+      success: `${base} text-emerald-400`,
+      error:   `${base} text-red-400`,
+      loading: `${base} text-violet-400`,
+    };
+    const bg: Record<string,string> = {
+      success: "background:rgba(17,34,24,0.8);border:1px solid rgba(52,211,153,0.25);",
+      error:   "background:rgba(34,17,17,0.8);border:1px solid rgba(248,113,113,0.25);",
+      loading: "background:rgba(17,22,42,0.8);border:1px solid rgba(108,79,255,0.25);",
+    };
+    statusDiv.className = map[type];
+    statusDiv.setAttribute("style", bg[type]);
+    statusDiv.innerHTML = html;
+  }
+
+  function setProgress(pct: number) {
+    if (pct <= 0) { progressWrap.classList.add("hidden"); progressBar.style.width = "0%"; return; }
+    progressWrap.classList.remove("hidden");
+    progressBar.style.width = `${pct}%`;
+  }
+
+  const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+  const WARN_SVG  = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`;
+  const ERR_SVG   = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 9l-6 6M9 9l6 6"/></svg>`;
+
+  btn.addEventListener("click", async () => {
+    const path = input.value.trim();
+    if (!path) { setStatus(`${WARN_SVG}<span>Please enter a folder path first.</span>`, "error"); return; }
+
+    btn.disabled = true;
+    btnContent.innerHTML = `${SPINNER}<span>Organizing…</span>`;
+    setStatus(`${SPINNER}<span>Scanning folder and moving files…</span>`, "loading");
+    setProgress(30);
+
+    try {
+      setProgress(60);
+      const res  = await fetch(`${BACKEND}/api/organize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_path: path }),
+      });
+      setProgress(90);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unknown error");
+
+      setProgress(100);
+      const moved = data.moved ?? 0;
+      const msg = moved === 0
+        ? "Folder already organized — no loose files found."
+        : `${moved} file${moved !== 1 ? "s" : ""} organized successfully!`;
+
+      setStatus(`${CHECK_SVG}<span>${msg}</span>`, "success");
+      (window as any).showToast?.(msg, "success");
+      window.dispatchEvent(new CustomEvent("files-organized"));
+      setTimeout(() => setProgress(0), 900);
+    } catch (err: any) {
+      setStatus(`${ERR_SVG}<span>${err.message}</span>`, "error");
+      (window as any).showToast?.(err.message, "error");
+      setProgress(0);
+    } finally {
+      btn.disabled = false;
+      btnContent.innerHTML = `${ZAP}<span>Organize Files</span>`;
+    }
+  });
+
+  input.addEventListener("keydown", (e: KeyboardEvent) => { if (e.key === "Enter") btn.click(); });
+</script>

@@ -1,0 +1,177 @@
+﻿---
+// HistoryTable.astro – file history powered by Wails GetHistory()
+---
+
+<div class="glass-card p-7 animate-slide-up" style="animation-delay: 0.16s;">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="icon-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" style="color:#888888" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div class="flex-1">
+      <div class="flex items-center gap-2.5">
+        <h2 class="font-semibold text-base leading-none" style="color:#ffffff;">Organize History</h2>
+        <span id="record-count" class="hidden text-xs font-semibold px-2 py-0.5 rounded-full"
+              style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#ffffff;"></span>
+      </div>
+      <p class="text-xs mt-1" style="color:#555555;">Every file movement recorded this session</p>
+    </div>
+    <button id="refresh-btn" title="Refresh" class="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+            style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#666666;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#666666'">
+      <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="overflow-x-auto rounded-xl" style="border:1px solid rgba(255,255,255,0.10);">
+    <table class="w-full border-collapse text-sm">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.10);">
+          <th class="tbl-th">Filename</th>
+          <th class="tbl-th">Type</th>
+          <th class="tbl-th">Old Path</th>
+          <th class="tbl-th">New Path</th>
+          <th class="tbl-th">Date</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr>
+          <td colspan="5" class="text-center text-slate-500 py-12 text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 animate-spin mx-auto mb-2 text-slate-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+            Loading history...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  .tbl-th {
+    text-align: left; padding: 0.65rem 1rem;
+    font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: #444444; white-space: nowrap;
+  }
+  .tbl-td {
+    padding: 0.7rem 1rem; color: #cccccc;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    max-width: 200px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tbl-row { transition: background 0.15s ease; animation: rowFadeIn 0.3s ease-out both; }
+  .tbl-row:hover .tbl-td { background: rgba(255,255,255,0.03); }
+  .tbl-row:last-child .tbl-td { border-bottom: none; }
+
+  @keyframes rowFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Monochrome badges — subtle gray fills with white text */
+  .badge-images { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18); color:#ffffff; }
+  .badge-videos { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18); color:#ffffff; }
+  .badge-docs   { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18); color:#ffffff; }
+  .badge-music  { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18); color:#ffffff; }
+  .badge-others { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10); color:#888888; }
+
+  .path-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.75rem; color: #444444; }
+  .filename-strong { font-weight: 600; color: #eeeeee; display: flex; align-items: center; gap: 0.5rem; }
+</style>
+
+<script>
+  declare const window: Window & {
+    go?: { main?: { App?: {
+      GetHistory: () => Promise<Array<{
+        filename: string; type: string; old_path: string; new_path: string; timestamp: string;
+      }>>;
+    } } };
+    refreshHistory?: () => void;
+  };
+
+  const typeConfig: Record<string, { cls: string; svg: string }> = {
+    Images: { cls: "badge-images",
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>` },
+    Videos: { cls: "badge-videos",
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>` },
+    Docs:   { cls: "badge-docs",
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg>` },
+    Music:  { cls: "badge-music",
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2z"/></svg>` },
+    Others: { cls: "badge-others",
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/></svg>` },
+  };
+
+  function fmt(iso: string) {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+    } catch { return iso; }
+  }
+
+  function short(path: string) {
+    if (!path) return "—";
+    const parts = path.replace(/\\/g, "/").split("/");
+    return parts.length > 3 ? "…/" + parts.slice(-2).join("/") : path;
+  }
+
+  async function loadHistory() {
+    const tbody  = document.getElementById("history-body")!;
+    const badge  = document.getElementById("record-count")!;
+    const App = window.go?.main?.App;
+
+    if (!App) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-12 text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Organize files to see history here.</td></tr>`;
+      return;
+    }
+
+    const icon = document.getElementById("refresh-icon")!;
+    icon.classList.add("animate-spin");
+
+    try {
+      const records = await App.GetHistory();
+
+      if (!records || records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-12 text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          No files organized yet.</td></tr>`;
+        badge.classList.add("hidden");
+        return;
+      }
+
+      badge.textContent = String(records.length);
+      badge.classList.remove("hidden");
+
+      tbody.innerHTML = records.map((r, i) => {
+        const cfg = typeConfig[r.type] ?? typeConfig.Others;
+        return `<tr class="tbl-row" style="animation-delay:${i * 0.03}s">
+          <td class="tbl-td"><span class="filename-strong">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            ${r.filename}
+          </span></td>
+          <td class="tbl-td">
+            <span class="type-badge ${cfg.cls}">${cfg.svg}&nbsp;${r.type}</span>
+          </td>
+          <td class="tbl-td"><span class="path-mono" title="${r.old_path}">${short(r.old_path)}</span></td>
+          <td class="tbl-td"><span class="path-mono" title="${r.new_path}">${short(r.new_path)}</span></td>
+          <td class="tbl-td text-slate-500 text-xs">${fmt(r.timestamp)}</td>
+        </tr>`;
+      }).join("");
+    } catch (e) {
+      console.error("GetHistory error:", e);
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-red-400 py-8 text-sm">Failed to load history.</td></tr>`;
+    } finally {
+      icon.classList.remove("animate-spin");
+    }
+  }
+
+  window.refreshHistory = loadHistory;
+  document.getElementById("refresh-btn")!.addEventListener("click", loadHistory);
+  loadHistory();
+</script>

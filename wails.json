@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Smart File Organizer",
+  "outputfilename": "SmartFileOrganizer",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://localhost:4321",
+  "reloadDirectories": "main.go,app.go,organizer.go,models.go",
+  "author": {
+    "name": "Smart File Organizer",
+    "email": ""
+  },
+  "info": {
+    "companyName": "Smart File Organizer",
+    "productName": "Smart File Organizer",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2026",
+    "comments": "A modern desktop file organizer built with Wails + Astro"
+  }
+}
