@@ -72,6 +72,11 @@
   .sc-icon-wrap { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#ffffff; }
   .sc-label { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#555555; }
   .sc-count { font-size:2rem; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .stat-card { cursor: pointer; }
+  .stat-card.is-active {
+    border-color: rgba(255,255,255,0.45);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.14), 0 8px 32px rgba(255,255,255,0.12);
+  }
 </style>
 
 <script>
@@ -80,7 +85,10 @@
       GetStats: () => Promise<{ images: number; videos: number; docs: number; music: number; others: number }>;
     } } };
     refreshStats?: () => void;
+    setHistoryFilter?: (type: string | null) => void;
   };
+
+  let activeFilter: string | null = null;
 
   const categories = [
     { key: "images", label: "Images", cls: "sc-images",
@@ -109,7 +117,7 @@
   function renderCards(data: Record<string, number>) {
     const grid = document.getElementById("stats-grid")!;
     grid.innerHTML = categories.map(cat => `
-      <div class="stat-card ${cat.cls}">
+      <div class="stat-card ${cat.cls}" data-type="${cat.label}">
         <div class="sc-icon-wrap">${cat.svg}</div>
         <span class="sc-label">${cat.label}</span>
         <span class="sc-count" data-key="${cat.key}">0</span>
@@ -119,6 +127,24 @@
     categories.forEach(cat => {
       const el = grid.querySelector<HTMLElement>(`[data-key="${cat.key}"]`);
       if (el) animateCount(el, data[cat.key] ?? 0);
+    });
+
+    grid.querySelectorAll<HTMLElement>(".stat-card").forEach(card => {
+      const type = card.dataset.type ?? null;
+      if (type && activeFilter === type) {
+        card.classList.add("is-active");
+      }
+
+      card.addEventListener("click", () => {
+        if (!type) return;
+        activeFilter = activeFilter === type ? null : type;
+        window.setHistoryFilter?.(activeFilter);
+
+        grid.querySelectorAll<HTMLElement>(".stat-card").forEach(c => c.classList.remove("is-active"));
+        if (activeFilter === type) {
+          card.classList.add("is-active");
+        }
+      });
     });
   }
 

@@ -89,7 +89,10 @@
       }>>;
     } } };
     refreshHistory?: () => void;
+    setHistoryFilter?: (type: string | null) => void;
   };
+
+  let activeTypeFilter: string | null = null;
 
   const typeConfig: Record<string, { cls: string; svg: string }> = {
     Images: { cls: "badge-images",
@@ -136,6 +139,9 @@
 
     try {
       const records = await App.GetHistory();
+      const filteredRecords = activeTypeFilter
+        ? records.filter(r => r.type === activeTypeFilter)
+        : records;
 
       if (!records || records.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-12 text-sm">
@@ -145,10 +151,19 @@
         return;
       }
 
-      badge.textContent = String(records.length);
+      if (filteredRecords.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-12 text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          No ${activeTypeFilter?.toLowerCase() ?? "matching"} files found in history.</td></tr>`;
+      }
+
+      badge.textContent = activeTypeFilter
+        ? `${filteredRecords.length} / ${records.length}`
+        : String(records.length);
       badge.classList.remove("hidden");
 
-      tbody.innerHTML = records.map((r, i) => {
+      if (filteredRecords.length > 0) {
+        tbody.innerHTML = filteredRecords.map((r, i) => {
         const cfg = typeConfig[r.type] ?? typeConfig.Others;
         return `<tr class="tbl-row" style="animation-delay:${i * 0.03}s">
           <td class="tbl-td"><span class="filename-strong">
@@ -163,6 +178,7 @@
           <td class="tbl-td text-slate-500 text-xs">${fmt(r.timestamp)}</td>
         </tr>`;
       }).join("");
+      }
     } catch (e) {
       console.error("GetHistory error:", e);
       tbody.innerHTML = `<tr><td colspan="5" class="text-center text-red-400 py-8 text-sm">Failed to load history.</td></tr>`;
@@ -170,6 +186,11 @@
       icon.classList.remove("animate-spin");
     }
   }
+
+  window.setHistoryFilter = (type: string | null) => {
+    activeTypeFilter = type;
+    loadHistory();
+  };
 
   window.refreshHistory = loadHistory;
   document.getElementById("refresh-btn")!.addEventListener("click", loadHistory);
